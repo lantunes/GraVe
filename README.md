@@ -26,3 +26,7 @@ Inspecting a trained GloVe model, example usage:
 ```
 python inspect_model.py --model glove.model --adjlist examples/karate.adjlist
 ```
+
+The plots below are color-coded according to the node degree: 
+
+![Results by node degree](resources/grave_results_by_degree.png)
