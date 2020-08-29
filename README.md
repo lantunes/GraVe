@@ -6,7 +6,9 @@ CBOW models, but very little has been done with the GloVe approach.
 
 This project makes use of the original [DeepWalk](https://github.com/phanein/deepwalk) implementation to generate the
 graph random walk corpus, and the [glove_python](https://github.com/maciejkula/glove-python) project to learn the 
-GloVe embeddings from the random walks. 
+GloVe embeddings from the random walks.
+
+![Results](resources/grave_results.png)
 
 Generating walks, example usage:
 ```
