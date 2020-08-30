@@ -32,11 +32,14 @@ if __name__ == '__main__':
     parser.add_argument('--components', '-s', action='store', type=int,
                         default=100,
                         help='Number of components in the learned vectors.')
+    parser.add_argument('--window', '-w', action='store', type=int,
+                        default=10,
+                        help='The length of the (symmetric) context window used for co-occurrence.')
     args = parser.parse_args()
 
     print('Pre-processing corpus')
     corpus_model = Corpus()
-    corpus_model.fit(read_corpus(args.create), window=10)
+    corpus_model.fit(read_corpus(args.create), window=args.window)
     corpus_model.save('corpus.model')
     print('Dict size: %s' % len(corpus_model.dictionary))
     print('Collocations: %s' % corpus_model.matrix.nnz)

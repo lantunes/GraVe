@@ -30,3 +30,10 @@ python inspect_model.py --model glove.model --adjlist examples/karate.adjlist
 The plots below are color-coded according to the node degree: 
 
 ![Results by node degree](resources/grave_results_by_degree.png)
+
+The plots below are color-coded according to community structure:
+
+![Results by community](resources/grave_results_by_community.png)
+
+The embeddings for the first plot were created with a symmetric context window size of 10, whereas the embeddings for 
+the second plot were created with a symmetric context window size of 1.

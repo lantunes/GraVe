@@ -7,7 +7,18 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 
-def get_color(degree):
+def get_community_color(node):
+    if node in ["11", "5", "6", "7", "17"]:
+        return "lightblue"
+    if node in ["12", "22", "18", "1", "20", "2", "14", "8", "4", "13"]:
+        return "red"
+    if node in ["3", "10", "32", "29", "28", "26", "25"]:
+        return "lightgreen"
+    else:
+        return "purple"
+
+
+def get_degree_color(degree):
     if degree <= 2:
         return "lightblue"
     if degree == 3 or degree == 4:
@@ -43,7 +54,8 @@ if __name__ == '__main__':
     X = []
     Y = []
     for node in G:
-        color_map.append(get_color(G.degree[node]))
+        color_map.append(get_community_color(node))
+        # color_map.append(get_degree_color(G.degree[node]))
         embedding = glove.word_vectors[glove.dictionary[node]]
         X.append(embedding[0])
         Y.append(embedding[1])
