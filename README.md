@@ -37,3 +37,11 @@ The plots below are color-coded according to community structure:
 
 The embeddings for the first plot were created with a symmetric context window size of 10, whereas the embeddings for 
 the second plot were created with a symmetric context window size of 1.
+
+The plots below are color-coded according to community structure, and the embeddings were generated from a walk dataset 
+that was created with the [node2vec](https://github.com/aditya-grover/node2vec) approach:
+
+![Results node2vec](resources/grave_results_node2vec.png)
+
+The embeddings were created with a symmetric context window size of 10.
+
