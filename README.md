@@ -55,3 +55,13 @@ that was created with the [node2vec](https://github.com/aditya-grover/node2vec) 
 
 The embeddings were created with a symmetric context window size of 10.
 
+The [Cora dataset](https://graphsandnetworks.com/the-cora-dataset/) consists of a graph with 2,708 labelled vertices and 
+5,429 edges. There are 7 label classes. A walks corpus was constructed using the node2vec approach, and a GloVe model 
+was created from this corpus (using a context window size of 10), resulting in 2,708 128-dimensional embeddings. Then, 
+a t-SNE plot was created, using:
+```
+python tsne_plot.py --model examples/cora.glove.model --graph examples/cora.gpickle --iterations 5000 --perplexity 50 --learning-rate 10
+```
+The resulting plot, below, displays the learned representations, colored by node label:
+
+<img src="resources/tsne_cora_dim128.png" width="500">
