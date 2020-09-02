@@ -65,3 +65,24 @@ python tsne_plot.py --model examples/cora.glove.model --graph examples/cora.gpic
 The resulting plot, below, displays the learned representations, colored by node label:
 
 <img src="resources/tsne_cora_dim128.png" width="500">
+
+### Factorization Machines and Jointly Learning Node Attributes
+
+The [attr2vec](https://www.aclweb.org/anthology/N18-1042/) approach demonstrates that words and their contextual 
+attributes can be jointly learned using Factorization Machines, a generalization of the GloVe model. Essentially, an 
+embedding is learned for each word and each contextual feature. Word embeddings learned this way encode (presumably)
+some knowledge of the node's attributes. The GraVe project takes the attr2vec approach and applies it to graphs with
+node-level attributes. These attributes are considered node-level features, and their embeddings are jointly learned 
+with the node embeddings.
+
+The vertices in the Karate Club graph are assigned one of two labels. Thus, it is interesting to ask if node-level
+embeddings can be learned that also encode these labels (i.e. attributes). A Factorization Machine model was created 
+based on the Karate Club graph, where the nodes were additionally associated with these labels (see 
+`karate2_labels_fm_training.py`). The results are displayed below:
+
+![Results karate2 labels](resources/karate2_label_fm_results.png)
+
+It appears that the embeddings are clustered according to community structure, but also by label. The results 
+demonstrate that embeddings can encode node-level attributes. The points in the plot on the left have labels colored 
+according to the node labels. That is, the points with yellow text belong to the "Mr. Hi" class, while the points with 
+the black text belong to the "Officer" class.  

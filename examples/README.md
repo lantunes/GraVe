@@ -78,3 +78,12 @@ The walks file for the `cora` model was created with:
 ```
 python node2vec_walks.py --num-walks 160 --walk-length 40 --input examples/cora.adjlist --output cora --directed
 ```
+
+The `karate2.fm.model` was created with the `grave.FactorizationMachine` class. It uses the `karate2.walks.0` corpus. 
+The code that generated this model is in `karate2_fm_training.py`. The results are essentially the same as when using
+the glove_python library, as expected, as when no extra node attributes are present, the Factorization Machine reduces 
+to the GloVe approach.
+
+The `karate2_labels.fm.model` was created with the `grave.FactorizationMachine` class, and it incorporates one of two
+labels on each node as additional node features.It uses the `karate2.walks.0` corpus. The code that generated this 
+model is in `karate2_labels_fm_training.py`.

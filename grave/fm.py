@@ -1,15 +1,27 @@
 import numpy as np
 
+from autograd import grad
+from autograd.misc.optimizers import adam
+
+from networkx.utils import open_file
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 
 class FactorizationMachine:
     """
     A degree-2 Factorization Machine.
     """
-    def __init__(self, dim, y_max, alpha, context_window_size, feature_combiner=None):
+    def __init__(self, dim, y_max, alpha, context_window_size, dictionary=None, feature_combiner=None, W=None, b=None):
         # a map of words to their embeddings list index
-        self.dictionary = {}
-        # a list of the learned embeddings
-        self.embeddings = []
+        self.dictionary = {} if dictionary is None else dictionary
+        # the embedding matrix
+        self.W = W
+        # the embedding biases used during training
+        self.b = b
         # the dimensionality of the learned embeddings
         self.dim = dim
         # the y_max hyperparameter
@@ -53,12 +65,75 @@ class FactorizationMachine:
 
         return X, Y
 
-    def fit(self, X, Y):
+    def _init_params(self, num_embeddings):
+        word_vectors = (np.random.rand(num_embeddings, self.dim) - 0.5) / self.dim
+        word_biases = np.zeros(num_embeddings, dtype=np.float64)
+        return word_vectors, word_biases
+
+    def fit(self, X, Y, batch_size=100, num_epochs=3, learning_rate=0.001):
         """
         Minimize the loss.
         """
-        # TODO
-        pass
+        num_embeddings = len(X[0])
+        print("num embeddings: %s" % num_embeddings)
+        print("num feature vectors: %s" % len(X))
+        print("num count labels: %s" % len(Y))
+
+        X = np.array(X)
+        Y = np.array(Y)
+
+        init_params = self._init_params(num_embeddings)
+        num_batches = int(np.ceil(len(X) / batch_size))
+
+        print("num batches: %s" % num_batches)
+
+        def batch_indices(iter):
+            idx = iter % num_batches
+            return slice(idx * batch_size, (idx + 1) * batch_size)
+
+        def objective(params, iter):
+            idx = batch_indices(iter)
+            return self._loss(params, X[idx], Y[idx])
+
+        # Get gradient of objective using autograd.
+        objective_grad = grad(objective)
+
+        def print_progress(params, iter, gradient):
+            if iter % num_batches == 0:
+                print("epoch: {:7}".format((iter // num_batches) + 1))
+
+        optimized_params = adam(objective_grad, init_params, step_size=learning_rate,
+                                num_iters=num_epochs * num_batches, callback=print_progress)
+
+        self.W, self.b = optimized_params
+
+    def _loss(self, params, X, Y):
+        W = params[0]
+        b = params[1]
+        return np.sum(self._weight(Y) * (self._score(X, W, b) - np.log(Y))**2)
+
+    def _weight(self, Y):
+        return np.where(Y < self.y_max, (Y / self.y_max)**self.alpha, 1.0)
+
+    def _score(self, X, W, b):
+        """
+        :param x: feature vectors
+        :return: an array of scalar scores for each feature vector
+        """
+        scores = []
+        for k in range(len(X)):
+            x = X[k]
+            bias_score = np.dot(x, b)
+            interaction_score = 0
+            for i in range(len(x)):
+                for j in range(len(x)):
+                    if i == j:
+                        continue
+                    prod = x[i] * x[j]
+                    if prod != 0:
+                        interaction_score += prod * np.dot(W[i], W[j])
+            scores.append(bias_score + interaction_score)
+        return np.array(scores)
 
     def _default_feature_combiner(self, word1, word2, feature_dict):
         """
@@ -117,3 +192,26 @@ class FactorizationMachine:
         combined = self.feature_combiner(word1, word2, feature_dict)
         return tuple(np.concatenate([fv, combined]))
 
+    @open_file(1, mode='wb')
+    def save(self, path, protocol=pickle.HIGHEST_PROTOCOL):
+        data = (self.W, self.b, self.dictionary, self.dim, self.y_max, self.alpha,
+                self.context_window_size, self.feature_combiner)
+        pickle.dump(data, path, protocol)
+
+    @staticmethod
+    @open_file(0, mode='rb')
+    def load_model(path):
+        W, b, dictionary, dim, y_max, alpha, context_window_size, feature_combiner = pickle.load(path)
+        return FactorizationMachine(dim=dim, y_max=y_max, alpha=alpha, context_window_size=context_window_size,
+                                    dictionary=dictionary,feature_combiner=feature_combiner, W=W, b=b)
+
+    @staticmethod
+    @open_file(3, mode='wb')
+    def save_training_data(X, Y, dictionary, path, protocol=pickle.HIGHEST_PROTOCOL):
+        data = (X, Y, dictionary)
+        pickle.dump(data, path, protocol)
+
+    @staticmethod
+    @open_file(0, mode='rb')
+    def load_training_data(path):
+        return pickle.load(path)
