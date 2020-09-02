@@ -1,8 +1,9 @@
 # GraVe
 
 This code in this project can be used as a starting point for creating node-level graph embeddings using the GloVe 
-approach. Much work in this space appears to have been done using the word2vec approach, with either the SkipGram or 
-CBOW models, but very little has been done with the GloVe approach. 
+approach (and more generally, using [Factorization Machines](https://cseweb.ucsd.edu/classes/fa17/cse291-b/reading/Rendle2010FM.pdf)). 
+Much work in this space appears to have been done using the word2vec approach, with either the SkipGram or CBOW models, 
+but very little has been done with the GloVe approach. 
 
 This project makes use of the original [DeepWalk](https://github.com/phanein/deepwalk) implementation to generate the
 graph random walk corpus, and the [glove_python](https://github.com/maciejkula/glove-python) project to learn the 
