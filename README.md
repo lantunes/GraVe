@@ -37,6 +37,8 @@ python inspect_model.py --model glove.model --adjlist examples/karate.adjlist
 
 ## Results
 
+### Learning Node Embeddings with GloVe
+
 The plots below are color-coded according to the node degree: 
 
 ![Results by node degree](resources/grave_results_by_degree.png)
@@ -66,7 +68,7 @@ The resulting plot, below, displays the learned representations, colored by node
 
 <img src="resources/tsne_cora_dim128.png" width="500">
 
-### Factorization Machines and Jointly Learning Node Attributes
+### Factorization Machines, and Jointly Learning Node Embeddings and Node Attribute Embeddings
 
 The [attr2vec](https://www.aclweb.org/anthology/N18-1042/) approach demonstrates that words and their contextual 
 attributes can be jointly learned using Factorization Machines, a generalization of the GloVe model. Essentially, an 
