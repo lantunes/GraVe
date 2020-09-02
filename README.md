@@ -41,7 +41,7 @@ python inspect_model.py --model glove.model --adjlist examples/karate.adjlist
 ### Learning Node Embeddings with GloVe
 
 A corpus of walks can be generated with the DeepWalk or node2vec approach, and then a GloVe model can be created from 
-the corpus. Each vertex (i.e. node) in in the graph is analogous to a word, and the walks are analogous to sentences.
+the corpus. Each vertex (i.e. node) in the graph is analogous to a word, and the walks are analogous to sentences.
 Initial experiments were carried out with the Karate Club graph.
 
 The plots below are color-coded according to the node degree: 
@@ -78,7 +78,7 @@ The resulting plot, below, displays the learned representations, colored by node
 The [attr2vec](https://www.aclweb.org/anthology/N18-1042/) approach demonstrates that words and their contextual 
 attributes can be jointly learned using Factorization Machines, a generalization of the GloVe model. Essentially, an 
 embedding is learned for each word and each contextual feature. Word embeddings learned this way encode (presumably)
-some knowledge of the node's attributes. The GraVe project takes the attr2vec approach and applies it to graphs with
+some knowledge of the word's attributes. The GraVe project takes the attr2vec approach and applies it to graphs with
 node-level attributes. These attributes are considered node-level features, and their embeddings are jointly learned 
 with the node embeddings.
 
