@@ -39,6 +39,10 @@ python inspect_model.py --model glove.model --adjlist examples/karate.adjlist
 
 ### Learning Node Embeddings with GloVe
 
+A corpus of walks can be generated with the DeepWalk or node2vec approach, and then a GloVe model can be created from 
+the corpus. Each vertex (i.e. node) in in the graph is analogous to a word, and the walks are analogous to sentences.
+Initial experiments were carried out with the Karate Club graph.
+
 The plots below are color-coded according to the node degree: 
 
 ![Results by node degree](resources/grave_results_by_degree.png)
