@@ -1,6 +1,6 @@
 # GraVe
 
-This code in this project can be used as a starting point for creating node-level graph embeddings using the GloVe 
+This code in this project can be used as a starting point for creating node-level graph embeddings using the [GloVe](https://nlp.stanford.edu/projects/glove/) 
 approach (and more generally, using [Factorization Machines](https://cseweb.ucsd.edu/classes/fa17/cse291-b/reading/Rendle2010FM.pdf)). 
 Much work in this space appears to have been done using the word2vec approach, with either the SkipGram or CBOW models, 
 but very little has been done with the GloVe approach. 
