@@ -85,5 +85,5 @@ the glove_python library, as expected, as when no extra node attributes are pres
 to the GloVe approach.
 
 The `karate2_labels.fm.model` was created with the `grave.FactorizationMachine` class, and it incorporates one of two
-labels on each node as additional node features.It uses the `karate2.walks.0` corpus. The code that generated this 
+labels on each node as additional node features. It uses the `karate2.walks.0` corpus. The code that generated this 
 model is in `karate2_labels_fm_training.py`.

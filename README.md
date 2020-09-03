@@ -73,7 +73,7 @@ The resulting plot, below, displays the learned representations, colored by node
 
 <img src="resources/tsne_cora_dim128.png" width="500">
 
-### Factorization Machines, and Jointly Learning Node Embeddings and Node Attribute Embeddings
+### Jointly Learning Node Embeddings and Node Attribute Embeddings with Factorization Machines
 
 The [attr2vec](https://www.aclweb.org/anthology/N18-1042/) approach demonstrates that words and their contextual 
 attributes can be jointly learned using Factorization Machines, a generalization of the GloVe model. Essentially, an 
