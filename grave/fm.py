@@ -3,6 +3,8 @@ import numpy as np
 from autograd import grad
 from autograd.misc.optimizers import adam
 
+import concurrent.futures
+
 from networkx.utils import open_file
 
 from scipy import sparse
@@ -35,17 +37,21 @@ class FactorizationMachine:
         # a function that determines how a single feature vector can be constructed for two words
         self.feature_combiner = self._default_feature_combiner if feature_combiner is None else feature_combiner
 
-    def build_training_data(self, corpus, features_dict):
+    def build_training_data(self, corpus, features_dict, workers=1):
         """
         Constructs the training data.
         :param corpus: a list of lists, where each item in an inner list is a word, or the path to the file containing
                       the corpus, where each line is a sentence, and each word on each line is space separated
         :param features_dict: a map of all words to their feature vectors
+        :param workers: the number of processors to use in parallel (must be >= 1)
         :return: the feature matrix, X, and the target labels (i.e. occurrence counts), Y
         """
 
         # construct self.dictionary using features_dict (embeddings list index values start from 0)
         self.dictionary = self._make_dictionary(features_dict)
+
+        if workers > 1:
+            return self._build_training_data_parallel(corpus, features_dict, workers)
 
         # construct a map of tuple feature vectors to counts (i.e. (1,0,1,0,0) -> 3)
         #  as we are sliding the context window over each line
@@ -59,12 +65,47 @@ class FactorizationMachine:
             for words in corpus:
                 self._count_feature_vectors(words, features_dict, feature_vector_counts)
 
+        return self._counts_to_data(feature_vector_counts)
+
+    def _build_training_data_parallel(self, corpus, features_dict, workers):
+        """
+        The corpus is read into memory and partitioned evenly amongst the workers, who then compute their
+        own feature vector count maps. All the worker feature vector count maps are merged at the end.
+        """
+        #
+        feature_vector_counts = {}
+        data = []
+        if type(corpus) is str:
+            with open(corpus, "r") as corpus_file:
+                for line in corpus_file.readlines():
+                    data.append(line.strip().split(" "))
+        else:
+            data = corpus
+        chunks = np.array_split(np.array(data), workers)
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+            for r in executor.map(self._run, [features_dict]*len(chunks), chunks):
+                # merge the feature vector counts from all workers
+                for fv in r:
+                    if fv not in feature_vector_counts:
+                        feature_vector_counts[fv] = r[fv]
+                    else:
+                        feature_vector_counts[fv] += r[fv]
+
+        return self._counts_to_data(feature_vector_counts)
+
+    def _run(self, features_dict, chunk):
+        fv_counts = {}
+        for words in chunk:
+            self._count_feature_vectors(words, features_dict, fv_counts)
+        return fv_counts
+
+    def _counts_to_data(self, feature_vector_counts):
         X = []
         Y = []
         for fv in feature_vector_counts:
             X.append(list(fv))
             Y.append(feature_vector_counts[fv])
-
         return X, Y
 
     def _init_params(self, num_embeddings):
