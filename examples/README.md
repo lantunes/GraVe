@@ -49,7 +49,7 @@ The models in this directory were created with the following settings:
  </tr>
  <tr>
     <td>karate3.*</td>
-    <td>node2vec</td>
+    <td>node2vec (p=1,q=1)</td>
     <td>160</td>
     <td>40</td>
     <td>10</td>

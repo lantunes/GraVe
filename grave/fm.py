@@ -5,6 +5,8 @@ from autograd.misc.optimizers import adam
 
 from networkx.utils import open_file
 
+from scipy import sparse
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -207,11 +209,62 @@ class FactorizationMachine:
 
     @staticmethod
     @open_file(3, mode='wb')
-    def save_training_data(X, Y, dictionary, path, protocol=pickle.HIGHEST_PROTOCOL):
+    def save_training_data(X, Y, dictionary, path, protocol=pickle.HIGHEST_PROTOCOL, sparsify=False):
+        """
+        Serializes the given data with pickle to the given path.
+        :param X: the feature vectors to be saved
+        :param Y: the feature vector corresponding count labels to be saved
+        :param dictionary: a map of node id to feature vector index
+        :param path: the filename of the generated pickle file
+        :param protocol: the pickle protocol
+        :param sparsify: whether to convert X to a sparse matrix before serializing
+        """
+        if sparsify:
+            X = sparse.csr_matrix(X)
         data = (X, Y, dictionary)
         pickle.dump(data, path, protocol)
 
     @staticmethod
+    def save_training_data_csv(X, Y, dictionary, data_path, dict_path):
+        """
+        Saves the data into .csv files. The first column in the data CSV file will be
+        the label (Y), and the remaining columns will be the features (X).
+        :param X: the feature vectors to be saved
+        :param Y: the feature vector corresponding count labels to be saved
+        :param dictionary: a map of node id to feature vector index
+        :param data_path: the filename of the training data to be saved
+        :param dict_path: the filename of the dictionary to be saved
+        """
+        with open(data_path, "w") as data_file:
+            for i, x in enumerate(X):
+                x.insert(0, Y[i])
+                data_file.write(",".join(map(str, x)) + "\n")
+            data_file.flush()
+        with open(dict_path, "w") as dict_file:
+            for item in dictionary.items():
+                dict_file.write(",".join(map(str, item)) + "\n")
+            dict_file.flush()
+
+    @staticmethod
     @open_file(0, mode='rb')
-    def load_training_data(path):
-        return pickle.load(path)
+    def load_training_data(path, sparse=False):
+        X, Y, dictionary = pickle.load(path)
+        if sparse:
+            X = X.toarray()
+        return X, Y, dictionary
+
+    @staticmethod
+    def load_training_data_csv(data_path, dict_path):
+        X = []
+        Y = []
+        with open(data_path, "r") as data_file:
+            for line in data_file.readlines():
+                data = line.strip().split(",")
+                Y.append(int(data[0]))
+                X.append([float(x) for x in data[1:]])
+        dictionary = {}
+        with open(dict_path, "r") as dict_file:
+            for line in dict_file.readlines():
+                k, v = line.strip().split(",")
+                dictionary[k] = int(v)
+        return X, Y, dictionary
