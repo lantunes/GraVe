@@ -86,11 +86,12 @@ class FactorizationMachine:
         with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
             for r in executor.map(self._run, [features_dict]*len(chunks), chunks):
                 # merge the feature vector counts from all workers
-                for fv in r:
+                for fv in list(r.keys()):
                     if fv not in feature_vector_counts:
                         feature_vector_counts[fv] = r[fv]
                     else:
                         feature_vector_counts[fv] += r[fv]
+                    del r[fv]
 
         return self._counts_to_data(feature_vector_counts)
 
