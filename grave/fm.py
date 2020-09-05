@@ -3,7 +3,7 @@ import numpy as np
 from autograd import grad
 from autograd.misc.optimizers import adam
 
-import concurrent.futures
+from multiprocessing import Pool
 
 from networkx.utils import open_file
 
@@ -39,7 +39,7 @@ class FactorizationMachine:
 
     def build_training_data(self, corpus, features_dict, workers=1):
         """
-        Constructs the training data.
+        Constructs the training data. NOTE: only binary feature vectors are currently supported.
         :param corpus: a list of lists, where each item in an inner list is a word, or the path to the file containing
                       the corpus, where each line is a sentence, and each word on each line is space separated
         :param features_dict: a map of all words to their feature vectors
@@ -65,7 +65,10 @@ class FactorizationMachine:
             for words in corpus:
                 self._count_feature_vectors(words, features_dict, feature_vector_counts)
 
-        return self._counts_to_data(feature_vector_counts)
+        return self._counts_to_data(feature_vector_counts, self._fv_length(features_dict))
+
+    def _fv_length(self, features_dict):
+        return len(features_dict)+len(next(iter(features_dict.values())))
 
     def _build_training_data_parallel(self, corpus, features_dict, workers):
         """
@@ -83,8 +86,11 @@ class FactorizationMachine:
             data = corpus
         chunks = np.array_split(np.array(data), workers)
 
-        with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
-            for r in executor.map(self._run, [features_dict]*len(chunks), chunks):
+        with Pool(processes=workers) as pool:
+            args = []
+            for chunk in chunks:
+                args.append((features_dict, chunk))
+            for r in pool.starmap(self._run, args):
                 # merge the feature vector counts from all workers
                 for fv in list(r.keys()):
                     if fv not in feature_vector_counts:
@@ -93,7 +99,7 @@ class FactorizationMachine:
                         feature_vector_counts[fv] += r[fv]
                     del r[fv]
 
-        return self._counts_to_data(feature_vector_counts)
+        return self._counts_to_data(feature_vector_counts, self._fv_length(features_dict))
 
     def _run(self, features_dict, chunk):
         fv_counts = {}
@@ -101,11 +107,11 @@ class FactorizationMachine:
             self._count_feature_vectors(words, features_dict, fv_counts)
         return fv_counts
 
-    def _counts_to_data(self, feature_vector_counts):
+    def _counts_to_data(self, feature_vector_counts, fv_size):
         X = []
         Y = []
         for fv in feature_vector_counts:
-            X.append(list(fv))
+            X.append(self._string_to_fv(fv, fv_size))
             Y.append(feature_vector_counts[fv])
         return X, Y
 
@@ -234,7 +240,16 @@ class FactorizationMachine:
         fv[self.dictionary[word1]] = 1
         fv[self.dictionary[word2]] = 1
         combined = self.feature_combiner(word1, word2, feature_dict)
-        return tuple(np.concatenate([fv, combined]))
+        return self._fv_to_string(np.concatenate([fv, combined]))
+
+    def _fv_to_string(self, fv):
+        return ",".join(map(str, fv.nonzero()[0]))
+
+    def _string_to_fv(self, string, size):
+        fv = np.zeros(size)
+        for i in [int(s) for s in string.split(",")]:
+            fv[i] = 1
+        return fv
 
     @open_file(1, mode='wb')
     def save(self, path, protocol=pickle.HIGHEST_PROTOCOL):
