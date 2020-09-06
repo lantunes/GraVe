@@ -149,7 +149,7 @@ class FactorizationMachine:
         objective_grad = grad(objective)
 
         def print_progress(params, iter, gradient):
-            if iter % num_batches == 0:
+            if (iter+1) % num_batches == 0:
                 print("epoch: {:7}".format((iter // num_batches) + 1))
 
         optimized_params = adam(objective_grad, init_params, step_size=learning_rate,
