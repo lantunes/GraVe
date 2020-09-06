@@ -37,6 +37,8 @@ class FactorizationMachine:
         # a function that determines how a single feature vector can be constructed for two words
         self.feature_combiner = self._default_feature_combiner if feature_combiner is None else feature_combiner
 
+        self._curr_loss = 0
+
     def build_training_data(self, corpus, features_dict, workers=1):
         """
         Constructs the training data. NOTE: only binary feature vectors are currently supported.
@@ -143,14 +145,17 @@ class FactorizationMachine:
 
         def objective(params, iter):
             idx = batch_indices(iter)
-            return self._loss(params, X[idx], Y[idx])
+            loss = self._loss(params, X[idx], Y[idx])
+            self._curr_loss += loss
+            return loss
 
         # Get gradient of objective using autograd.
         objective_grad = grad(objective)
 
         def print_progress(params, iter, gradient):
             if (iter+1) % num_batches == 0:
-                print("epoch: {:7}".format((iter // num_batches) + 1))
+                print("epoch: {:7}, loss: {:15}".format((iter // num_batches) + 1, self._curr_loss._value))
+                self._curr_loss = 0
 
         optimized_params = adam(objective_grad, init_params, step_size=learning_rate,
                                 num_iters=num_epochs * num_batches, callback=print_progress)
