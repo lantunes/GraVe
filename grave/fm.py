@@ -180,13 +180,12 @@ class FactorizationMachine:
             x = X[k]
             bias_score = np.dot(x, b)
             interaction_score = 0
-            for i in range(len(x)):
-                for j in range(len(x)):
-                    if i == j:
-                        continue
-                    prod = x[i] * x[j]
-                    if prod != 0:
-                        interaction_score += prod * np.dot(W[i], W[j])
+            nz = x.nonzero()[0]
+            for nz_i in range(len(nz)):
+                for nz_j in range(nz_i + 1, len(nz)):
+                    i = nz[nz_i]
+                    j = nz[nz_j]
+                    interaction_score += x[i] * x[j] * np.dot(W[i], W[j])
             scores.append(bias_score + interaction_score)
         return np.array(scores)
 
