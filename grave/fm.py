@@ -122,10 +122,14 @@ class FactorizationMachine:
         word_biases = np.zeros(num_embeddings, dtype=np.float64)
         return word_vectors, word_biases
 
-    def fit(self, X, Y, batch_size=100, num_epochs=3, learning_rate=0.001):
+    def fit(self, X, Y, batch_size=100, num_epochs=3, learning_rate=0.001, use_autograd=True):
         """
         Minimize the loss.
         """
+        if not use_autograd:
+            self._fit_manual(X, Y, batch_size, num_epochs, learning_rate)
+            return
+
         num_embeddings = len(X[0])
         print("num embeddings: %s" % num_embeddings)
         print("num feature vectors: %s" % len(X))
@@ -188,6 +192,93 @@ class FactorizationMachine:
                     interaction_score += x[i] * x[j] * np.dot(W[i], W[j])
             scores.append(bias_score + interaction_score)
         return np.array(scores)
+
+    def _fit_manual(self, X, Y, batch_size, num_epochs, learning_rate):
+        num_embeddings = len(X[0])
+        print("num embeddings: %s" % num_embeddings)
+        print("num feature vectors: %s" % len(X))
+        print("num count labels: %s" % len(Y))
+
+        # X = sparse.csr_matrix(X)  # TODO
+        # Y = sparse.csr_matrix(Y)  # TODO
+        X = np.array(X)
+        Y = np.array(Y)
+
+        W, b = self._init_params(num_embeddings)
+        num_batches = int(np.ceil(len(X) / batch_size))
+
+        print("num batches: %s" % num_batches)
+
+        # TODO minibatch SGD
+        # def batch_indices(iter):
+        #     idx = iter % num_batches
+        #     return slice(idx * batch_size, (idx + 1) * batch_size)
+        #
+        # for iter in range(num_epochs * num_batches):
+        #     idx = batch_indices(iter)
+        #     X_batch, Y_batch = X[idx], Y[idx]
+
+        # plain SGD (one sample at a time)
+        for epoch in range(num_epochs):
+            # TODO shuffle data set
+            for k in range(len(X)):
+                x = X[k]
+                y = Y[k]
+                weight_single = self._weight_single(y)
+                score_single = self._score_single(x, W, b)
+
+                loss = weight_single * (score_single - np.log(y))**2
+                self._curr_loss += loss
+
+                grad_bias = self._grad_bias(x, y, weight_single, score_single)
+                grad_embeddings = self._grad_embeddings(x, y, W, weight_single, score_single)
+
+                for i in range(len(W)):
+                    b[i] = b[i] - learning_rate * grad_bias[i]
+                    W[i] = W[i] - learning_rate * grad_embeddings[i]
+
+            print("epoch: {:7}, loss: {:15}".format(epoch+1, self._curr_loss))
+            self._curr_loss = 0
+
+        self.W = W
+        self.b = b
+
+    def _score_single(self, x, W, b):
+        bias_score = np.dot(x, b)
+        interaction_score = 0
+        nz = x.nonzero()[0]
+        for nz_i in range(len(nz)):
+            for nz_j in range(nz_i + 1, len(nz)):
+                i = nz[nz_i]
+                j = nz[nz_j]
+                interaction_score += x[i] * x[j] * np.dot(W[i], W[j])
+        return bias_score + interaction_score
+
+    def _weight_single(self, y):
+        if y < self.y_max:
+            return (y / self.y_max) ** self.alpha
+        return 1.0
+
+    def _grad_bias(self, x, y, weight_single, score_single):
+        grad = []
+        for x_i in x:
+            grad.append(2 * weight_single * (score_single - np.log(y)) * x_i)
+        return grad
+
+    def _grad_embeddings(self, x, y, W, weight_single, score_single):
+        col_prod_sums = []
+        for c in range(len(W[0])):
+            col = W[:,c]
+            col_prod_sums.append(np.dot(col, x))
+
+        grad = np.zeros((len(x), len(W[0])))
+        for i in range(len(x)):
+            x_i = x[i]
+            if x_i == 0:
+                continue
+            for c in range(len(W[0])):
+                grad[i,c] = 2 * weight_single * (score_single - np.log(y)) * (x_i * col_prod_sums[c] - W[i,c]*x_i**2)
+        return grad
 
     def _default_feature_combiner(self, word1, word2, feature_dict):
         """
