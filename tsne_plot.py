@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from glove import Glove
 import networkx as nx
-
+from grave import FactorizationMachine
 
 def color_by_label(label):
     if label == "Case_Based":
@@ -40,17 +40,20 @@ if __name__ == '__main__':
     parser.add_argument('--learning-rate', '-r', action='store',
                         default=10, type=int,
                         help='The learning rate parameter for t-SNE.')
+    parser.add_argument('--fm', '-f', action='store_true',
+                        help='If present, indicates that the model is of type grave.FactorizationMachine.')
 
     args = parser.parse_args()
 
     G = nx.read_gpickle(args.graph)
-    glove = Glove.load(args.model)
+    model = FactorizationMachine.load_model(args.model) if args.fm else Glove.load(args.model)
+    embeddings = model.W if args.fm else model.word_vectors
 
     color_map = []
     X = []
     for node in G:
         color_map.append(color_by_label(G.nodes[node]['label']))
-        X.append(glove.word_vectors[glove.dictionary[node]])
+        X.append(embeddings[model.dictionary[node]])
 
     tsne = TSNE(n_components=2, verbose=1,
                 perplexity=args.perplexity, n_iter=args.iterations, learning_rate=args.learning_rate)

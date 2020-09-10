@@ -219,9 +219,11 @@ class FactorizationMachine:
         #     X_batch, Y_batch = X[idx], Y[idx]
 
         # plain SGD (one sample at a time)
+        # TODO try ADAM
         for epoch in range(num_epochs):
-            # TODO shuffle data set
-            for k in range(len(X)):
+            indices = list(range(len(X)))
+            np.random.shuffle(indices)
+            for k in indices:
                 x = X[k]
                 y = Y[k]
                 weight_single = self._weight_single(y)
