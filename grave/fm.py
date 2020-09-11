@@ -7,6 +7,8 @@ from multiprocessing import Pool
 
 from networkx.utils import open_file
 
+from .optimizers import Optimizers
+
 from scipy import sparse
 
 try:
@@ -122,12 +124,12 @@ class FactorizationMachine:
         word_biases = np.zeros(num_embeddings, dtype=np.float64)
         return word_vectors, word_biases
 
-    def fit(self, X, Y, batch_size=100, num_epochs=3, learning_rate=0.001, use_autograd=True):
+    def fit(self, X, Y, batch_size=100, num_epochs=3, learning_rate=0.001, use_autograd=True, optimizer="sgd", **kwargs):
         """
         Minimize the loss.
         """
         if not use_autograd:
-            self._fit_manual(X, Y, batch_size, num_epochs, learning_rate)
+            self._fit_manual(X, Y, batch_size, num_epochs, learning_rate, optimizer, **kwargs)
             return
 
         num_embeddings = len(X[0])
@@ -193,7 +195,7 @@ class FactorizationMachine:
             scores.append(bias_score + interaction_score)
         return np.array(scores)
 
-    def _fit_manual(self, X, Y, batch_size, num_epochs, learning_rate):
+    def _fit_manual(self, X, Y, batch_size, num_epochs, learning_rate, optimizer, **kwargs):
         num_embeddings = len(X[0])
         print("num embeddings: %s" % num_embeddings)
         print("num feature vectors: %s" % len(X))
@@ -218,12 +220,12 @@ class FactorizationMachine:
         #     idx = batch_indices(iter)
         #     X_batch, Y_batch = X[idx], Y[idx]
 
-        # plain SGD (one sample at a time)
-        # TODO try ADAM
+        update = Optimizers.get(optimizer, b, W, learning_rate, **kwargs)
+
         for epoch in range(num_epochs):
             indices = list(range(len(X)))
             np.random.shuffle(indices)
-            for k in indices:
+            for i, k in enumerate(indices):
                 x = X[k]
                 y = Y[k]
                 weight_single = self._weight_single(y)
@@ -235,9 +237,7 @@ class FactorizationMachine:
                 grad_bias = self._grad_bias(x, y, weight_single, score_single)
                 grad_embeddings = self._grad_embeddings(x, y, W, weight_single, score_single)
 
-                for i in range(len(W)):
-                    b[i] = b[i] - learning_rate * grad_bias[i]
-                    W[i] = W[i] - learning_rate * grad_embeddings[i]
+                b, W = update(b, W, grad_bias, grad_embeddings, i)
 
             print("epoch: {:7}, loss: {:15}".format(epoch+1, self._curr_loss))
             self._curr_loss = 0
@@ -262,10 +262,7 @@ class FactorizationMachine:
         return 1.0
 
     def _grad_bias(self, x, y, weight_single, score_single):
-        grad = []
-        for x_i in x:
-            grad.append(2 * weight_single * (score_single - np.log(y)) * x_i)
-        return grad
+        return 2 * weight_single * (score_single - np.log(y)) * x
 
     def _grad_embeddings(self, x, y, W, weight_single, score_single):
         col_prod_sums = []
