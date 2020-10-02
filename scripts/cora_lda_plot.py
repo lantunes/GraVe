@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from mpl_toolkits.mplot3d import Axes3D
 
 """
-Here, we use LDA for dimensionality reduction, reducing the size of the Cora feature vector from 1,433 to 2.
+Here, we use LDA for dimensionality reduction, reducing the size of the Cora feature vector from 1,433 to 3.
 """
 
 def color_by_label(label):
@@ -35,9 +36,9 @@ if __name__ == '__main__':
         X.append(G.nodes[node]['attr'])
         Y.append(G.nodes[node]['label'])
 
-    result = LinearDiscriminantAnalysis(n_components=2).fit_transform(X, Y)
+    result = LinearDiscriminantAnalysis(n_components=3).fit_transform(X, Y)
 
     fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.scatter(result[:, 0], result[:, 1], c=color_map)
+    ax = Axes3D(fig)
+    ax.scatter(result[:, 0], result[:, 1], result[:, 2], c=color_map)
     plt.show()
