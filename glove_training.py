@@ -1,6 +1,5 @@
 import argparse
 import pprint
-import gensim
 
 from glove import Glove, Corpus
 
