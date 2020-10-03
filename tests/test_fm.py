@@ -2,6 +2,8 @@ import unittest
 
 from grave import FactorizationMachine
 
+from operator import add
+
 
 class TestFactorizationMachine(unittest.TestCase):
 
@@ -174,9 +176,10 @@ class TestFactorizationMachine(unittest.TestCase):
         # check that the feature bits are set properly
         word1_features = features_dict[word1]
         word2_features = features_dict[word2]
+        word_features = list(map(add, word1_features, word2_features))
         for i in range(num_words, len(feature_vector)):
-            word_features_idx = len(word1_features) - (len(feature_vector) - i)
-            if word1_features[word_features_idx] == 1.0 or word2_features[word_features_idx] == 1.0:
-                self.assertEqual(feature_vector[i], 1.0)
+            word_features_idx = len(word_features) - (len(feature_vector) - i)
+            if word_features[word_features_idx] != 0.0:
+                self.assertEqual(feature_vector[i], word_features[word_features_idx])
             else:
                 self.assertEqual(feature_vector[i], 0.0)

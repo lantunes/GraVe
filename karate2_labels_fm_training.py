@@ -1,4 +1,4 @@
-from grave import FactorizationMachine
+from grave import FactorizationMachine, bitwise_or_feature_combiner
 import networkx as nx
 
 import matplotlib.pyplot as plt
@@ -31,9 +31,10 @@ if __name__ == '__main__':
         club = G.nodes[node]['club']
         feature_dict[str(node+1)] = [1, 0] if club == "Mr. Hi" else [0, 1]
 
-    fm = FactorizationMachine(dim=2, y_max=100, alpha=0.75, context_window_size=1)
+    fm = FactorizationMachine(dim=2, y_max=100, alpha=0.75, context_window_size=1,
+                              feature_combiner=bitwise_or_feature_combiner)
     X, Y = fm.build_training_data("examples/karate2.walks.0", feature_dict)
-    fm.fit(X, Y, batch_size=1, learning_rate=0.01, num_epochs=10)
+    fm.fit(X, Y, batch_size=1, learning_rate=0.01, num_epochs=10, use_autograd=False, optimizer="nesterov")
 
     color_map = []
     X_ = []

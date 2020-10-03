@@ -11,6 +11,8 @@ from .optimizers import Optimizers
 
 from scipy import sparse
 
+from .feature_combiners import addition_feature_combiner
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -21,7 +23,8 @@ class FactorizationMachine:
     """
     A degree-2 Factorization Machine.
     """
-    def __init__(self, dim, y_max, alpha, context_window_size, dictionary=None, feature_combiner=None, W=None, b=None):
+    def __init__(self, dim, y_max, alpha, context_window_size, dictionary=None,
+                 feature_combiner=addition_feature_combiner, W=None, b=None):
         # a map of words to their embeddings list index
         self.dictionary = {} if dictionary is None else dictionary
         # the embedding matrix
@@ -37,13 +40,13 @@ class FactorizationMachine:
         # the symmetric context window size for which to determine co-occurrences
         self.context_window_size = context_window_size
         # a function that determines how a single feature vector can be constructed for two words
-        self.feature_combiner = self._default_feature_combiner if feature_combiner is None else feature_combiner
+        self.feature_combiner = feature_combiner
 
         self._curr_loss = 0
 
     def build_training_data(self, corpus, features_dict, workers=1):
         """
-        Constructs the training data. NOTE: only binary feature vectors are currently supported.
+        Constructs the training data.
         :param corpus: a list of lists, where each item in an inner list is a word, or the path to the file containing
                       the corpus, where each line is a sentence, and each word on each line is space separated
         :param features_dict: a map of all words to their feature vectors
@@ -57,7 +60,8 @@ class FactorizationMachine:
         if workers > 1:
             return self._build_training_data_parallel(corpus, features_dict, workers)
 
-        # construct a map of tuple feature vectors to counts (i.e. (1,0,1,0,0) -> 3)
+        # construct a map of tuple feature vectors (by non-zero index) to (counts, vals)
+        # e.g. "1,34,85" -> (3, (1,1,0.5))
         #  as we are sliding the context window over each line
         feature_vector_counts = {}
         if type(corpus) is str:
@@ -96,12 +100,12 @@ class FactorizationMachine:
                 args.append((features_dict, chunk))
             for r in pool.starmap(self._run, args):
                 # merge the feature vector counts from all workers
-                for fv in list(r.keys()):
-                    if fv not in feature_vector_counts:
-                        feature_vector_counts[fv] = r[fv]
+                for fv_key in list(r.keys()):
+                    if fv_key not in feature_vector_counts:
+                        feature_vector_counts[fv_key] = r[fv_key]
                     else:
-                        feature_vector_counts[fv] += r[fv]
-                    del r[fv]
+                        feature_vector_counts[fv_key] = (feature_vector_counts[fv_key][0]+r[fv_key][0], feature_vector_counts[fv_key][1])
+                    del r[fv_key]
 
         return self._counts_to_data(feature_vector_counts, self._fv_length(features_dict))
 
@@ -114,9 +118,9 @@ class FactorizationMachine:
     def _counts_to_data(self, feature_vector_counts, fv_size):
         X = []
         Y = []
-        for fv in feature_vector_counts:
-            X.append(self._string_to_fv(fv, fv_size))
-            Y.append(feature_vector_counts[fv])
+        for fv_key, fv_val in feature_vector_counts.items():
+            X.append(self._string_to_fv(fv_key, fv_val[1], fv_size))
+            Y.append(fv_val[0])
         return X, Y
 
     def _init_params(self, num_embeddings):
@@ -279,19 +283,6 @@ class FactorizationMachine:
                 grad[i,c] = 2 * weight_single * (score_single - np.log(y)) * (x_i * col_prod_sums[c] - W[i,c]*x_i**2)
         return grad
 
-    def _default_feature_combiner(self, word1, word2, feature_dict):
-        """
-        Returns the bitwise OR of the feature vectors for each word.
-        :param word1: the first word of the co-occurrence pair
-        :param word2: the second word of the co-occurrence pair
-        :param feature_dict: a map of words to their feature vectors
-        :return: a single feature vector representing word1 and word2
-        """
-        if feature_dict[word1] is None or len(feature_dict[word1]) == 0 or \
-                feature_dict[word2] is None or len(feature_dict[word2]) == 0:
-            return []
-        return np.bitwise_or(feature_dict[word1], feature_dict[word2])
-
     def _make_dictionary(self, features_dict):
         dict = {}
         i = 0
@@ -307,10 +298,10 @@ class FactorizationMachine:
                 if target == context_word:
                     continue
                 # construct the feature vector for this pair
-                feature_vector = self._init_feature_vector(target, context_word, features_dict)
-                if feature_vector not in feature_vector_counts:
-                    feature_vector_counts[feature_vector] = 0
-                feature_vector_counts[feature_vector] += 1
+                fv_key, fv_val = self._init_feature_vector(target, context_word, features_dict)
+                if fv_key not in feature_vector_counts:
+                    feature_vector_counts[fv_key] = (0, fv_val)
+                feature_vector_counts[fv_key] = (feature_vector_counts[fv_key][0]+1, feature_vector_counts[fv_key][1])
 
     def _get_slices(self, seq, window):
         slices = []
@@ -330,19 +321,18 @@ class FactorizationMachine:
         return slices
 
     def _init_feature_vector(self, word1, word2, feature_dict):
-        fv = np.zeros(len(feature_dict))
-        fv[self.dictionary[word1]] = 1
-        fv[self.dictionary[word2]] = 1
-        combined = self.feature_combiner(word1, word2, feature_dict)
-        return self._fv_to_string(np.concatenate([fv, combined]))
+        coccurrence_vector = np.zeros(len(feature_dict))
+        coccurrence_vector[self.dictionary[word1]] = 1
+        coccurrence_vector[self.dictionary[word2]] = 1
+        combined_features = self.feature_combiner(word1, word2, feature_dict)
+        feature_vector = np.concatenate([coccurrence_vector, combined_features])
+        nonzeros = feature_vector.nonzero()
+        return ",".join(map(str, nonzeros[0])), tuple(feature_vector[nonzeros])
 
-    def _fv_to_string(self, fv):
-        return ",".join(map(str, fv.nonzero()[0]))
-
-    def _string_to_fv(self, string, size):
+    def _string_to_fv(self, string, vals, size):
         fv = np.zeros(size)
-        for i in [int(s) for s in string.split(",")]:
-            fv[i] = 1
+        for i, j in enumerate([int(s) for s in string.split(",")]):
+            fv[j] = vals[i]
         return fv
 
     @open_file(1, mode='wb')
