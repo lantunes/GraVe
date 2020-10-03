@@ -324,10 +324,16 @@ class FactorizationMachine:
         coccurrence_vector = np.zeros(len(feature_dict))
         coccurrence_vector[self.dictionary[word1]] = 1
         coccurrence_vector[self.dictionary[word2]] = 1
-        combined_features = self.feature_combiner(word1, word2, feature_dict)
+        combined_features = self._combine_features(word1, word2, feature_dict)
         feature_vector = np.concatenate([coccurrence_vector, combined_features])
         nonzeros = feature_vector.nonzero()
         return ",".join(map(str, nonzeros[0])), tuple(feature_vector[nonzeros])
+
+    def _combine_features(self, word1, word2, feature_dict):
+        if feature_dict[word1] is None or len(feature_dict[word1]) == 0 or \
+                feature_dict[word2] is None or len(feature_dict[word2]) == 0:
+            return []
+        return self.feature_combiner(feature_dict[word1], feature_dict[word2])
 
     def _string_to_fv(self, string, vals, size):
         fv = np.zeros(size)
