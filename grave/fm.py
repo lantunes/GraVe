@@ -251,14 +251,13 @@ class FactorizationMachine:
 
     def _score_single(self, x, W, b):
         bias_score = np.dot(x, b)
-        interaction_score = 0
-        nz = x.nonzero()[0]
-        for nz_i in range(len(nz)):
-            for nz_j in range(nz_i + 1, len(nz)):
-                i = nz[nz_i]
-                j = nz[nz_j]
-                interaction_score += x[i] * x[j] * np.dot(W[i], W[j])
-        return bias_score + interaction_score
+
+        x_T = np.array([x]).T
+        square_of_sums = np.sum(np.multiply(W, x_T), axis=0)**2
+        sum_of_squares = np.sum(np.multiply(W**2, x_T**2), axis=0)
+        interaction_score = np.sum(square_of_sums - sum_of_squares)
+
+        return bias_score + 0.5 * interaction_score
 
     def _weight_single(self, y):
         if y < self.y_max:
@@ -274,13 +273,17 @@ class FactorizationMachine:
             col = W[:,c]
             col_prod_sums.append(np.dot(col, x))
 
-        grad = np.zeros((len(x), len(W[0])))
-        for i in range(len(x)):
-            x_i = x[i]
-            if x_i == 0:
-                continue
-            for c in range(len(W[0])):
-                grad[i,c] = 2 * weight_single * (score_single - np.log(y)) * (x_i * col_prod_sums[c] - W[i,c]*x_i**2)
+        col_prod_sums = np.array(col_prod_sums)
+
+        grad = 2 * weight_single * (score_single - np.log(y)) * (np.outer(x, col_prod_sums) - np.multiply(W,np.transpose([x])**2))
+        # ^ The line above is a condensed form of the following more verbose code:
+        # grad = np.zeros((len(x), len(W[0])))
+        # nz = np.nonzero(x != 0)[0]
+        # for nz_i in range(len(nz)):
+        #     i = nz[nz_i]
+        #     for c in range(len(W[0])):
+        #         grad[i,c] = 2 * weight_single * (score_single - np.log(y)) * (x[i] * col_prod_sums[c] - W[i,c]*x[i]**2)
+
         return grad
 
     def _make_dictionary(self, features_dict):
