@@ -38,16 +38,16 @@ class Node2VecGraph:
 
 		return walk
 
-	def simulate_walks(self, num_walks, walk_length):
+	def simulate_walks(self, num_walks, walk_length, verbose=True):
 		"""
 		Repeatedly simulate random walks from each node.
 		"""
 		G = self.G
 		walks = []
 		nodes = list(G.nodes())
-		print('Walk iteration:')
+		if verbose: print('Walk iteration:')
 		for walk_iter in range(num_walks):
-			print(str(walk_iter+1), '/', str(num_walks))
+			if verbose: print(str(walk_iter+1), '/', str(num_walks))
 			random.shuffle(nodes)
 			for node in nodes:
 				walks.append(self.node2vec_walk(walk_length=walk_length, start_node=node))
