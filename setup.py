@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="GraVe",
-      version="0.1.0",
+      version="0.1.1",
       description="GraVe: Graph Vectors.",
       long_description="Graph vectors.",
       license="Apache License 2.0",
@@ -19,4 +19,4 @@ setup(name="GraVe",
       packages=["grave"],
       keywords=["graphs", "embeddings"],
       python_requires='>3.5.6',
-      install_requires=["numpy >= 1.15.2", "autograd >= 1.3", "networkx >= 2.4", "scipy >= 1.1.0"])
+      install_requires=["numpy >= 1.15.2", "autograd >= 1.3", "networkx >= 2.4", "scipy >= 1.1.0", "tqdm >= 4.54.1"])
