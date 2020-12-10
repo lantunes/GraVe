@@ -15,6 +15,8 @@ from scipy import sparse
 
 from .feature_combiners import addition_feature_combiner
 
+import gzip
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -375,8 +377,7 @@ class FactorizationMachine:
                                     dictionary=dictionary,feature_combiner=feature_combiner, W=W, b=b)
 
     @staticmethod
-    @open_file(3, mode='wb')
-    def save_training_data(X, Y, dictionary, path, protocol=pickle.HIGHEST_PROTOCOL, sparsify=False):
+    def save_training_data(X, Y, dictionary, path, protocol=pickle.HIGHEST_PROTOCOL, sparsify=False, zipped=False):
         """
         Serializes the given data with pickle to the given path.
         :param X: the feature vectors to be saved
@@ -385,11 +386,14 @@ class FactorizationMachine:
         :param path: the filename of the generated pickle file
         :param protocol: the pickle protocol
         :param sparsify: whether to convert X to a sparse matrix before serializing
+        :param zipped: whether to gzip the serialized file
         """
-        if sparsify:
-            X = sparse.csr_matrix(X)
-        data = (X, Y, dictionary)
-        pickle.dump(data, path, protocol)
+        o = gzip.open if zipped else open
+        with o(path, "wb") as f:
+            if sparsify:
+                X = sparse.csr_matrix(X)
+            data = (X, Y, dictionary)
+            pickle.dump(data, f, protocol)
 
     @staticmethod
     def save_training_data_csv(X, Y, dictionary, data_path, dict_path):
@@ -413,12 +417,13 @@ class FactorizationMachine:
             dict_file.flush()
 
     @staticmethod
-    @open_file(0, mode='rb')
-    def load_training_data(path, sparse=False):
-        X, Y, dictionary = pickle.load(path)
-        if sparse:
-            X = X.toarray()
-        return X, Y, dictionary
+    def load_training_data(path, sparse=False, zipped=False):
+        o = gzip.open if zipped else open
+        with o(path, "rb") as f:
+            X, Y, dictionary = pickle.load(f)
+            if sparse:
+                X = X.toarray()
+            return X, Y, dictionary
 
     @staticmethod
     def load_training_data_csv(data_path, dict_path):

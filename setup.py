@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="GraVe",
-      version="0.1.1",
+      version="0.1.2",
       description="GraVe: Graph Vectors.",
       long_description="Graph vectors.",
       license="Apache License 2.0",
