@@ -3,7 +3,9 @@ import autograd.numpy as np
 from autograd import grad
 from autograd.misc.optimizers import adam
 
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
+
+from tqdm import tqdm
 
 from networkx.utils import open_file
 
@@ -78,6 +80,14 @@ class FactorizationMachine:
     def _fv_length(self, features_dict):
         return len(features_dict)+len(next(iter(features_dict.values())))
 
+    def _listener(self, progress_queue, n):
+        pbar = tqdm(total=n)
+        while True:
+            message = progress_queue.get()
+            if message == "kill":
+                break
+            pbar.update(1)
+
     def _build_training_data_parallel(self, corpus, features_dict, workers):
         """
         The corpus is read into memory and partitioned evenly amongst the workers, who then compute their
@@ -94,10 +104,14 @@ class FactorizationMachine:
             data = corpus
         chunks = np.array_split(np.array(data), workers)
 
+        progress_queue = Manager().Queue()
+
         with Pool(processes=workers) as pool:
+            pool.apply_async(self._listener, (progress_queue, len(data)))
+
             args = []
             for chunk in chunks:
-                args.append((features_dict, chunk))
+                args.append((features_dict, chunk, progress_queue))
             for r in pool.starmap(self._run, args):
                 # merge the feature vector counts from all workers
                 for fv_key in list(r.keys()):
@@ -107,12 +121,15 @@ class FactorizationMachine:
                         feature_vector_counts[fv_key] = (feature_vector_counts[fv_key][0]+r[fv_key][0], feature_vector_counts[fv_key][1])
                     del r[fv_key]
 
+            progress_queue.put("kill")
+
         return self._counts_to_data(feature_vector_counts, self._fv_length(features_dict))
 
-    def _run(self, features_dict, chunk):
+    def _run(self, features_dict, chunk, progress_queue):
         fv_counts = {}
         for words in chunk:
             self._count_feature_vectors(words, features_dict, fv_counts)
+            progress_queue.put(1)
         return fv_counts
 
     def _counts_to_data(self, feature_vector_counts, fv_size):
