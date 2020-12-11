@@ -48,13 +48,14 @@ class FactorizationMachine:
 
         self._curr_loss = 0
 
-    def build_training_data(self, corpus, features_dict, workers=1):
+    def build_training_data(self, corpus, features_dict, workers=1, sparse_x=False):
         """
         Constructs the training data.
         :param corpus: a list of lists, where each item in an inner list is a word, or the path to the file containing
                       the corpus, where each line is a sentence, and each word on each line is space separated
         :param features_dict: a map of all words to their feature vectors
         :param workers: the number of processors to use in parallel (must be >= 1)
+        :param sparse_x: if true, each x in X will be converted to a COO sparse matrix
         :return: the feature matrix, X, and the target labels (i.e. occurrence counts), Y
         """
 
@@ -62,7 +63,7 @@ class FactorizationMachine:
         self.dictionary = self._make_dictionary(features_dict)
 
         if workers > 1:
-            return self._build_training_data_parallel(corpus, features_dict, workers)
+            return self._build_training_data_parallel(corpus, features_dict, workers, sparse_x)
 
         # construct a map of tuple feature vectors (by non-zero index) to (counts, vals)
         # e.g. "1,34,85" -> (3, (1,1,0.5))
@@ -77,7 +78,7 @@ class FactorizationMachine:
             for words in corpus:
                 self._count_feature_vectors(words, features_dict, feature_vector_counts)
 
-        return self._counts_to_data(feature_vector_counts, self._fv_length(features_dict))
+        return self._counts_to_data(feature_vector_counts, self._fv_length(features_dict), sparse_x)
 
     def _fv_length(self, features_dict):
         return len(features_dict)+len(next(iter(features_dict.values())))
@@ -90,7 +91,7 @@ class FactorizationMachine:
                 break
             pbar.update(1)
 
-    def _build_training_data_parallel(self, corpus, features_dict, workers):
+    def _build_training_data_parallel(self, corpus, features_dict, workers, sparse_x):
         """
         The corpus is read into memory and partitioned evenly amongst the workers, who then compute their
         own feature vector count maps. All the worker feature vector count maps are merged at the end.
@@ -125,7 +126,7 @@ class FactorizationMachine:
 
             progress_queue.put("kill")
 
-        return self._counts_to_data(feature_vector_counts, self._fv_length(features_dict))
+        return self._counts_to_data(feature_vector_counts, self._fv_length(features_dict), sparse_x)
 
     def _run(self, features_dict, chunk, progress_queue):
         fv_counts = {}
@@ -134,11 +135,11 @@ class FactorizationMachine:
             progress_queue.put(1)
         return fv_counts
 
-    def _counts_to_data(self, feature_vector_counts, fv_size):
+    def _counts_to_data(self, feature_vector_counts, fv_size, sparse_x):
         X = []
         Y = []
         for fv_key, fv_val in feature_vector_counts.items():
-            X.append(self._string_to_fv(fv_key, fv_val[1], fv_size))
+            X.append(self._string_to_fv(fv_key, fv_val[1], fv_size, sparse_x))
             Y.append(fv_val[0])
         return X, Y
 
@@ -219,15 +220,15 @@ class FactorizationMachine:
         return np.array(scores)
 
     def _fit_manual(self, X, Y, batch_size, num_epochs, learning_rate, optimizer, **kwargs):
-        num_embeddings = len(X[0])
+        num_embeddings = len(X[0].toarray()[0]) if type(X[0]) is sparse.coo.coo_matrix else len(X[0])
         print("num embeddings: %s" % num_embeddings)
         print("num feature vectors: %s" % len(X))
         print("num count labels: %s" % len(Y))
 
         # X = sparse.csr_matrix(X)  # TODO
         # Y = sparse.csr_matrix(Y)  # TODO
-        X = np.array(X)
-        Y = np.array(Y)
+        # X = np.array(X)
+        # Y = np.array(Y)
 
         W, b = self._init_params(num_embeddings)
         num_batches = int(np.ceil(len(X) / batch_size))
@@ -250,6 +251,8 @@ class FactorizationMachine:
             np.random.shuffle(indices)
             for i, k in enumerate(indices):
                 x = X[k]
+                if type(x) is sparse.coo.coo_matrix:
+                    x = x.toarray()[0]
                 y = Y[k]
                 weight_single = self._weight_single(y)
                 score_single = self._score_single(x, W, b)
@@ -357,10 +360,12 @@ class FactorizationMachine:
             return []
         return self.feature_combiner(feature_dict[word1], feature_dict[word2])
 
-    def _string_to_fv(self, string, vals, size):
+    def _string_to_fv(self, string, vals, size, sparse_x):
         fv = np.zeros(size)
         for i, j in enumerate([int(s) for s in string.split(",")]):
             fv[j] = vals[i]
+        if sparse_x:
+            fv = sparse.coo_matrix(fv)
         return fv
 
     @open_file(1, mode='wb')

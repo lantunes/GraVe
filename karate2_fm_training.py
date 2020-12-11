@@ -25,7 +25,7 @@ if __name__ == '__main__':
         "24": [], "25": [], "26": [], "27": [], "28": [], "29": [], "30": [], "31": [], "32": [], "33": [], "34": []
     }
     X, Y = f.build_training_data("examples/karate2.walks.0", feature_dict)
-    f.fit(X, Y, batch_size=1, learning_rate=0.01, num_epochs=10)
+    f.fit(X, Y, batch_size=1, learning_rate=0.01, num_epochs=10, use_autograd=False)
 
     color_map = []
     X_ = []
